@@ -19,6 +19,7 @@ from Src.API.realtime import search_catalog as realtime
 from Src.API.realtime import meta_catalog as meta_catalog_realtime
 from Src.API.realtime import realtime as streams_realtime
 from Src.Utilities.dictionaries import STREAM,extra_sources,provider_map
+from Src.Utilities.circuit_breaker import should_skip, record_success, record_failure
 from Src.API.epg import tivu, tivu_get,epg_guide,convert_bho_1,convert_bho_2,convert_bho_3
 from Src.API.extractors.uprot import get_uprot_numbers,generate_uprot_txt
 import logging
@@ -289,36 +290,116 @@ async def addon_stream(request: Request,config, type, id,):
                 raise HTTPException(status_code=404)
             return respond_with(streams)
         elif "realtime" in id and RT == '1':
-            streams = await streams_realtime(streams,id,client)
+            if not should_skip("RT"):
+                try:
+                    before = len(streams["streams"])
+                    streams = await streams_realtime(streams,id,client)
+                    after = len(streams["streams"])
+                    if after > before:
+                        record_success("RT")
+                    else:
+                        record_failure("RT", reason="no_streams_returned")
+                except Exception as e:
+                    record_failure("RT", reason=f"{type(e).__name__}: {e}")
             return respond_with(streams)
         elif "tt" in id or "tmdb" in id or "kitsu" in id:
             logger.info(f"Handling movie or series: {id}")
             if "kitsu" in id:
                 if provider_maps['ANIMEWORLD'] == "1" and AW == "1":
-                    streams = await animeworld(streams,id,client)
+                    if not should_skip("AW"):
+                        try:
+                            streams = await animeworld(streams,id,client)
+                            record_success("AW")
+                        except Exception as e:
+                            record_failure("AW", reason=f"{type(e).__name__}: {e}")
             else:
                 if provider_maps['STREAMINGCOMMUNITY'] == "1" and SC == "1":
                     if provider_maps['SC_MFP'] != "0":
                         SC_MFP = "1"
                     else:
                         SC_MFP = '0'
-                    streams = await streaming_community(streams,id,client,SC_MFP,MFP_CREDENTIALS)
+                    if not should_skip("SC"):
+                        try:
+                            streams = await streaming_community(streams,id,client,SC_MFP,MFP_CREDENTIALS)
+                            record_success("SC")
+                        except Exception as e:
+                            record_failure("SC", reason=f"{type(e).__name__}: {e}")
                 if provider_maps['CB01'] == "1" and CB == "1":
-                    streams = await cb01(streams,id,MFP,MFP_CREDENTIALS,client)
+                    if not should_skip("CB01"):
+                        try:
+                            streams = await cb01(streams,id,MFP,MFP_CREDENTIALS,client)
+                            record_success("CB01")
+                        except Exception as e:
+                            record_failure("CB01", reason=f"{type(e).__name__}: {e}")
                 if provider_maps['GUARDASERIE'] == "1" and GS == "1":
-                    streams = await guardaserie(streams,id,client)
+                    if not should_skip("GS"):
+                        try:
+                            before = len(streams["streams"])
+                            streams = await guardaserie(streams,id,client)
+                            after = len(streams["streams"])
+                            if after > before:
+                                record_success("GS")
+                            else:
+                                record_failure("GS", reason="no_streams_returned")
+                        except Exception as e:
+                            record_failure("GS", reason=f"{type(e).__name__}: {e}")
                 if provider_maps['GUARDAHD'] == "1" and GHD == "1":
-                    streams = await guardahd(streams,id,client)
+                    if not should_skip("GHD"):
+                        try:
+                            streams = await guardahd(streams,id,client)
+                            record_success("GHD")
+                        except Exception as e:
+                            record_failure("GHD", reason=f"{type(e).__name__}: {e}")
                 if provider_maps['EUROSTREAMING'] == "1" and ES == "1":
-                    streams = await eurostreaming(streams,id,client,MFP,MFP_CREDENTIALS)
+                    if not should_skip("ES"):
+                        try:
+                            before = len(streams["streams"])
+                            streams = await eurostreaming(streams,id,client,MFP,MFP_CREDENTIALS)
+                            after = len(streams["streams"])
+                            if after > before:
+                                record_success("ES")
+                            else:
+                                record_failure("ES", reason="no_streams_returned")
+                        except Exception as e:
+                            record_failure("ES", reason=f"{type(e).__name__}: {e}")
                 if provider_maps['GUARDAFLIX'] == "1" and GF == "1":
-                    streams = await guardaflix(streams,id,client,MFP,MFP_CREDENTIALS)
+                    if not should_skip("GF"):
+                        try:
+                            streams = await guardaflix(streams,id,client,MFP,MFP_CREDENTIALS)
+                            record_success("GF")
+                        except Exception as e:
+                            record_failure("GF", reason=f"{type(e).__name__}: {e}")
                 if provider_maps['GUARDOSERIE'] == "1" and GO == "1":
-                    streams = await guardoserie(streams,id,client,MFP,MFP_CREDENTIALS)
+                    if not should_skip("GO"):
+                        try:
+                            before = len(streams["streams"])
+                            streams = await guardoserie(streams,id,client,MFP,MFP_CREDENTIALS)
+                            after = len(streams["streams"])
+                            if after > before:
+                                record_success("GO")
+                            else:
+                                record_failure("GO", reason="no_streams_returned")
+                        except Exception as e:
+                            record_failure("GO", reason=f"{type(e).__name__}: {e}")
                 if provider_maps['REALTIME'] == '1' and RT == '1':
-                    streams = await streams_realtime(streams,id,client)
+                    if not should_skip("RT"):
+                        try:
+                            before = len(streams["streams"])
+                            streams = await streams_realtime(streams,id,client)
+                            after = len(streams["streams"])
+                            if after > before:
+                                record_success("RT")
+                            else:
+                                record_failure("RT", reason="no_streams_returned")
+                        except Exception as e:
+                            record_failure("RT", reason=f"{type(e).__name__}: {e}")
                 if provider_maps['TOONITALIA'] == '1' and TI == '1':
-                    streams = await toonitalia(streams,id,client,MFP,MFP_CREDENTIALS)
+                    if not should_skip("TI"):
+                        try:
+                            streams = await toonitalia(streams,id,client,MFP,MFP_CREDENTIALS)
+                            record_success("TI")
+                        except Exception as e:
+                            record_failure("TI", reason=f"{type(e).__name__}: {e}")
             return respond_with(streams)
         if not streams['streams']:
             raise HTTPException(status_code=404)
